@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { BPTProcess } from '../types';
-import { useTranslation } from '../context/LanguageContext';
 import { BPTNode } from './BPTNode';
 
 interface BPTFlowchartProps {
@@ -11,7 +10,6 @@ type Positions = { [key: number]: { x: number; y: number } };
 type Dimensions = { [key: number]: { width: number; height: number } };
 
 export const BPTFlowchart: React.FC<BPTFlowchartProps> = ({ process }) => {
-    const { t } = useTranslation();
     const [positions, setPositions] = useState<Positions>({});
     const [dimensions, setDimensions] = useState<Dimensions>({});
 
@@ -55,10 +53,10 @@ export const BPTFlowchart: React.FC<BPTFlowchartProps> = ({ process }) => {
     return (
         <div>
             <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                <span className="font-semibold">{t('results.async.trigger')}:</span> {process.trigger}
+                <span className="font-semibold">Trigger:</span> {process.trigger}
             </p>
             <div className="mt-4">
-                <span className="font-semibold text-sm text-slate-600 dark:text-slate-300">{t('results.async.steps')}:</span>
+                <span className="font-semibold text-sm text-slate-600 dark:text-slate-300">Steps:</span>
                 <div 
                     className="relative w-full h-[32rem] rounded-lg mt-2 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 overflow-auto dark:[--grid-color:#475569] [--grid-color:#cbd5e1]"
                     style={{

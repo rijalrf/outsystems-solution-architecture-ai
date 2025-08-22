@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from '../context/LanguageContext';
 
 export const Loader: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('');
-  const { t } = useTranslation();
 
   useEffect(() => {
     const messages = [
-        t('loader.message1'),
-        t('loader.message2'),
-        t('loader.message3'),
-        t('loader.message4'),
-        t('loader.message5'),
+        'Analyzing design structure...',
+        'Identifying key screens and components...',
+        'Designing data entities and relationships...',
+        'Constructing architecture canvas...',
+        'Aligning with OutSystems best practices...',
     ];
     
     setMessage(messages[0]);
@@ -33,7 +31,7 @@ export const Loader: React.FC = () => {
     return () => {
       clearInterval(progressInterval);
     };
-  }, [t]);
+  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center text-center my-12">
@@ -44,7 +42,7 @@ export const Loader: React.FC = () => {
             ></div>
         </div>
         <p className="mt-2 text-slate-600 dark:text-slate-300 font-semibold">{message || 'Starting analysis...'}</p>
-        <p className="text-sm text-slate-400 dark:text-slate-500">{t('loader.subtitle')}</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500">This may take a moment.</p>
     </div>
   );
 };

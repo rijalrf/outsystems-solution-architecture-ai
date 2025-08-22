@@ -1,9 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import type { AnalysisResult, Endpoint, Role, Page, StaticEntity, SiteProperty, ThirdPartyServiceRecommendation, Timer, BPTProcess } from '../types';
 import { ERDCanvas } from './ERDCanvas';
 import { EntitiesList } from './EntitiesList';
 import { ArchitectureCanvasDisplay } from './ArchitectureCanvasDisplay';
-import { useTranslation } from '../context/LanguageContext';
 import { ERDControls, ERDCanvasHandle } from './ERDControls';
 import { generatePdfReport } from '../utils/pdfExporter';
 
@@ -112,16 +111,20 @@ const CodeBlock: React.FC<{ title: string; code: string }> = ({ title, code }) =
 
 export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result }) => {
   const erdCanvasRef = useRef<ERDCanvasHandle>(null);
-  const { t } = useTranslation();
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handleExportPdf = async () => {
     if (!result) return;
     
-    // Find the ERD element to capture. Using a stable ID is reliable.
-    const erdElement = document.getElementById('erd-export-container');
-    
-    // The generatePdfReport utility now handles the entire PDF creation process.
-    await generatePdfReport(result, erdElement);
+    setIsExportingPdf(true);
+    try {
+        const erdElement = document.getElementById('erd-export-container');
+        await generatePdfReport(result, erdElement);
+    } catch (e) {
+        console.error("Failed to generate PDF report:", e);
+    } finally {
+        setIsExportingPdf(false);
+    }
   };
 
   const hasAsyncProcesses = result.asynchronousProcesses && 
@@ -131,25 +134,38 @@ export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result })
   return (
     <div className="mt-8">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{t('results.title')}</h2>
+        <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Analysis Results</h2>
         <button
             onClick={handleExportPdf}
-            className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 flex items-center gap-2"
+            disabled={isExportingPdf}
+            className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 flex items-center justify-center gap-2 w-36 disabled:bg-red-400 disabled:cursor-not-allowed"
         >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            {t('results.exportPdf')}
+            {isExportingPdf ? (
+                <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Exporting...</span>
+                </>
+            ) : (
+                <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    <span>Export to PDF</span>
+                </>
+            )}
         </button>
       </div>
 
       <div id="pdf-content">
         {result.businessSummary && (
-            <ResultCard id="business-summary" title={t('results.bizSummary.title')} icon={<BriefcaseIcon />}>
+            <ResultCard id="business-summary" title="Business Summary" icon={<BriefcaseIcon />}>
                 <p className="text-slate-600 dark:text-slate-300">{result.businessSummary}</p>
             </ResultCard>
         )}
 
         {result.architecture && (
-            <ResultCard id="architecture" title={t('results.architecture.title')} icon={<ArchitectureIcon />}>
+            <ResultCard id="architecture" title="Architecture Canvas" icon={<ArchitectureIcon />}>
                 <ArchitectureCanvasDisplay architecture={result.architecture} />
             </ResultCard>
         )}
@@ -157,23 +173,23 @@ export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result })
         {result.entities?.length > 0 && (
             <ResultCard 
                 id="erd-diagram" 
-                title={t('results.erd.title')} 
+                title="ERD Diagram" 
                 icon={<DiagramIcon />}
                 controls={<ERDControls canvasRef={erdCanvasRef} />}
             >
-                <p className="text-sm text-slate-500 dark:text-slate-400 -mt-2 mb-4">{t('results.erd.description')}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 -mt-2 mb-4">Click and drag tables to organize the diagram. Use controls to zoom and enter fullscreen.</p>
                 <ERDCanvas ref={erdCanvasRef} entities={result.entities} relationships={result.relationships} />
             </ResultCard>
         )}
         
         {result.entities?.length > 0 && (
-            <ResultCard id="entities" title={t('results.entities.title')} icon={<TableIcon />}>
+            <ResultCard id="entities" title="Entities" icon={<TableIcon />}>
             <EntitiesList entities={result.entities} />
             </ResultCard>
         )}
 
         {result.staticEntities?.length > 0 && (
-            <ResultCard id="static-entities" title={t('results.staticEntities.title')} icon={<StaticEntityIcon />}>
+            <ResultCard id="static-entities" title="Static Entities" icon={<StaticEntityIcon />}>
                 {result.staticEntities.map((entity: StaticEntity, index: number) => (
                     <SectionItem key={index} title={entity.name}>
                         <p className="text-sm text-slate-500 dark:text-slate-400 italic mt-1 mb-3">{entity.description}</p>
@@ -207,15 +223,15 @@ export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result })
             )}
 
         {hasAsyncProcesses && (
-            <ResultCard id="asynchronous-processes" title={t('results.async.title')} icon={<AsyncIcon />}>
+            <ResultCard id="asynchronous-processes" title="Asynchronous Processes" icon={<AsyncIcon />}>
                 {result.asynchronousProcesses?.timers && result.asynchronousProcesses.timers.length > 0 && (
                     <div>
-                        <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">{t('results.async.timers')}</h4>
+                        <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Timers</h4>
                         {result.asynchronousProcesses.timers.map((timer: Timer, index: number) => (
                             <SectionItem key={index} title={timer.name}>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 italic mt-1 mb-2">{timer.description}</p>
                                 <p className="text-sm text-slate-600 dark:text-slate-300">
-                                    <span className="font-semibold">{t('results.async.schedule')}:</span> {timer.schedule}
+                                    <span className="font-semibold">Schedule:</span> {timer.schedule}
                                 </p>
                             </SectionItem>
                         ))}
@@ -223,14 +239,14 @@ export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result })
                 )}
                 {result.asynchronousProcesses?.bptProcesses && result.asynchronousProcesses.bptProcesses.length > 0 && (
                      <div className="mt-4">
-                        <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">{t('results.async.bpt')}</h4>
+                        <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">BPT Processes</h4>
                         {result.asynchronousProcesses.bptProcesses.map((process: BPTProcess, index: number) => (
                             <SectionItem key={index} title={process.name}>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                                    <span className="font-semibold">{t('results.async.trigger')}:</span> {process.trigger}
+                                    <span className="font-semibold">Trigger:</span> {process.trigger}
                                 </p>
                                 <div className="mt-2">
-                                    <span className="font-semibold text-sm text-slate-600 dark:text-slate-300">{t('results.async.steps')}:</span>
+                                    <span className="font-semibold text-sm text-slate-600 dark:text-slate-300">Steps:</span>
                                     <ol className="list-decimal list-inside mt-1 text-sm text-slate-500 dark:text-slate-400 space-y-1">
                                         {process.steps.map((step, stepIndex) => (
                                             <li key={stepIndex}>{step}</li>
@@ -245,11 +261,11 @@ export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result })
         )}
 
         {result.thirdPartyRecommendations && result.thirdPartyRecommendations.length > 0 && (
-            <ResultCard id="third-party-recommendations" title={t('results.thirdParty.title')} icon={<ThirdPartyIcon />}>
+            <ResultCard id="third-party-recommendations" title="Third-Party Recommendations" icon={<ThirdPartyIcon />}>
                 {result.thirdPartyRecommendations.map((rec, index) => (
                     <SectionItem key={index} title={rec.serviceName}>
                         <p className="text-sm text-slate-500 dark:text-slate-400 italic mt-1 mb-2">
-                            <strong>{t('results.thirdParty.useCase')}:</strong> {rec.useCase}
+                            <strong>Use Case:</strong> {rec.useCase}
                         </p>
                         <p className="text-sm text-slate-600 dark:text-slate-300">{rec.recommendation}</p>
                     </SectionItem>
@@ -258,23 +274,23 @@ export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result })
         )}
 
         {result.endpoints?.length > 0 && (
-            <ResultCard id="api-endpoints" title={t('results.api.title')} icon={<ApiIcon />}>
+            <ResultCard id="api-endpoints" title="API Endpoints" icon={<ApiIcon />}>
                 {result.endpoints.map((endpoint: Endpoint, index: number) => (
                     <SectionItem key={index} title={endpoint.name}>
                         <p className="text-sm text-slate-500 dark:text-slate-400 italic mt-1 mb-2">{endpoint.description}</p>
                         <div className="text-sm text-slate-600 dark:text-slate-300 space-y-2">
-                            <p><span className="font-semibold">{t('results.api.method')}:</span> <span className="font-mono bg-slate-200 dark:bg-slate-600 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded">{endpoint.method}</span></p>
-                            <p><span className="font-semibold">{t('results.api.path')}:</span> <span className="font-mono">{endpoint.path}</span></p>
+                            <p><span className="font-semibold">Method:</span> <span className="font-mono bg-slate-200 dark:bg-slate-600 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded">{endpoint.method}</span></p>
+                            <p><span className="font-semibold">Path:</span> <span className="font-mono">{endpoint.path}</span></p>
                             {endpoint.parameters.length > 0 && (
                                 <div>
-                                    <span className="font-semibold">{t('results.api.parameters')}:</span>
+                                    <span className="font-semibold">Parameters:</span>
                                     <ul className="list-disc list-inside ml-4">
                                         {endpoint.parameters.map((param, i) => <li key={i}>{param}</li>)}
                                     </ul>
                                 </div>
                             )}
-                            {endpoint.requestExample && <CodeBlock title={t('results.api.requestExample')} code={endpoint.requestExample} />}
-                            {endpoint.responseExample && <CodeBlock title={t('results.api.responseExample')} code={endpoint.responseExample} />}
+                            {endpoint.requestExample && <CodeBlock title="Request Example" code={endpoint.requestExample} />}
+                            {endpoint.responseExample && <CodeBlock title="Response Example" code={endpoint.responseExample} />}
                         </div>
                     </SectionItem>
                 ))}
@@ -283,7 +299,7 @@ export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result })
 
 
         {result.roles?.length > 0 && (
-            <ResultCard id="roles" title={t('results.roles.title')} icon={<UserIcon />}>
+            <ResultCard id="roles" title="Roles & Permissions" icon={<UserIcon />}>
                 {result.roles.map((role: Role, index: number) => (
                     <SectionItem key={index} title={role.name}>
                         <p className="text-sm text-slate-500 dark:text-slate-400 italic mt-1">{role.description}</p>
@@ -293,12 +309,12 @@ export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result })
         )}
 
         {result.pages?.length > 0 && (
-            <ResultCard id="pages" title={t('results.pages.title')} icon={<PageIcon />}>
+            <ResultCard id="pages" title="Pages" icon={<PageIcon />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {result.pages.map((page: Page, index: number) => (
                         <SectionItem key={index} title={page.name} className="flex flex-col">
                             <p className="text-sm text-slate-500 dark:text-slate-400 italic mt-1 mb-2 flex-grow">{page.description}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-300"><span className="font-semibold">{t('results.pages.role')}:</span> {page.role}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-300"><span className="font-semibold">Primary Role:</span> {page.role}</p>
                         </SectionItem>
                     ))}
                 </div>
@@ -306,13 +322,13 @@ export const ResultsDisplay: React.FC<{ result: AnalysisResult }> = ({ result })
         )}
 
         {result.siteProperties?.length > 0 && (
-            <ResultCard id="site-properties" title={t('results.siteProperties.title')} icon={<SettingsIcon />}>
+            <ResultCard id="site-properties" title="Site Properties" icon={<SettingsIcon />}>
                 {result.siteProperties.map((prop: SiteProperty, index: number) => (
                     <SectionItem key={index} title={prop.name}>
                         <p className="text-sm text-slate-500 dark:text-slate-400 italic mt-1 mb-2">{prop.description}</p>
                         <div className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
-                            <p><span className="font-semibold">{t('results.siteProperties.dataType')}:</span> {prop.dataType}</p>
-                            <p><span className="font-semibold">{t('results.siteProperties.defaultValue')}:</span> <span className="font-mono bg-slate-200 dark:bg-slate-600 px-1 py-0.5 rounded">{prop.defaultValue}</span></p>
+                            <p><span className="font-semibold">Data Type:</span> {prop.dataType}</p>
+                            <p><span className="font-semibold">Default Value:</span> <span className="font-mono bg-slate-200 dark:bg-slate-600 px-1 py-0.5 rounded">{prop.defaultValue}</span></p>
                         </div>
                     </SectionItem>
                 ))}
